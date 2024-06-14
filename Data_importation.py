@@ -62,7 +62,8 @@ def dataset_creator(files, event, tmin=1, tmax=4, freq=500):
         interest_events_label = total_events[index, 2]
         for i in range(interest_events.shape[0]):
             if interest_events_label[i] == index_events[0]:
-                MI.append(raw_data[:, interest_events[i] + tmin:interest_events[i] + tmax])
+                mi = raw_data[:, interest_events[i] + tmin:interest_events[i] + tmax]
+                MI.append(mi)
             elif interest_events_label[i] == index_events[1]:
                 rest.append(raw_data[:, interest_events[i] + tmin:interest_events[i] + tmax])
 

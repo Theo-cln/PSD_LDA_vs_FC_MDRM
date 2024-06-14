@@ -18,6 +18,8 @@ def PSD_visualisation (Freqs_MI, Freqs_rest, Psd_mean_MI, Psd_mean_rest, electro
 def FC_visualisation(FC_MI, FC_rest, frequency, channel_names, phase_name):
     FC_mean_MI = np.mean(FC_MI, axis=0)
     FC_mean_rest = np.mean(FC_rest, axis=0)
+    """FC_mean_MI = FC_MI
+    FC_mean_rest = FC_rest"""
     channels = range(len(channel_names))
     fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(10, 6))
     plot = axes[0].imshow(FC_mean_MI[:, :, frequency], cmap='bwr')
@@ -74,14 +76,15 @@ def Reorder_Rsquare(Rsquare,electrodes_orig):
 
 
 def NS_visualisation(freq, NS_MI, NS_Rest, channel, phase_name):
-    plt.figure(figsize=(16, 16))
+    plt.figure(figsize=(10, 6))
     plt.plot(freq, NS_MI, label='NS MI', color='red')
     plt.plot(freq, NS_Rest, label='NS Rest', color='blue')
-    plt.title(f'Node strength of MI, rest and the difference for {phase_name} {channel}')
+    plt.title(f'Node strength of MI, rest for {phase_name} {channel}')
     plt.xlabel('Frequency (Hz)')
     plt.ylabel('Node strength')
     plt.legend()
     plt.grid(True)
     plt.show()
+
 
 

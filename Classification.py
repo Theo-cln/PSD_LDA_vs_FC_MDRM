@@ -182,8 +182,12 @@ def features_separability(MI, rest, previous_MI, previous_rest, target, electrod
     plt.show()
 
 
-def LDA_train(psd_MI, psd_rest, freqs_MI, freqs_rest, Ordered_R_squared_map, Ordered_channel_name, electrodes, phase_name, lowLimit=0, lda_classifier=LinearDiscriminantAnalysis(), k_fold=False):
-    R_squared_map_visualisation(Ordered_R_squared_map, freqs_MI, Ordered_channel_name, phase_name, feature_name="PSD")
+def LDA_train(data_MI, data_rest, freqs_MI, freqs_rest, Ordered_R_squared_map, Ordered_channel_name, electrodes, phase_name, lowLimit=0, lda_classifier=LinearDiscriminantAnalysis(), k_fold=False, feature_name="PSD"):
+    if feature_name == "PSD":
+        R_squared_map_visualisation(Ordered_R_squared_map, freqs_MI, Ordered_channel_name, phase_name, feature_name="PSD")
+    if feature_name == "NS":
+        R_squared_map_visualisation(Ordered_R_squared_map, freqs_MI, Ordered_channel_name, phase_name, feature_name="NS")
+
     retry = "y"
     while retry == "y":
         target = input("electrode and frequency bin for the training : (format: electrode 1;frequency bin 1;"
@@ -193,15 +197,19 @@ def LDA_train(psd_MI, psd_rest, freqs_MI, freqs_rest, Ordered_R_squared_map, Ord
         target[2] = electrodes.index(target[2])
         target[1] = int(target[1]) - lowLimit
         target[3] = int(target[3]) - lowLimit
-        psd_mean_MI = np.mean(psd_MI, axis=0)
-        psd_mean_rest = np.mean(psd_rest, axis=0)
-        PSD_visualisation(freqs_MI, freqs_rest, psd_mean_MI[target[0]], psd_mean_rest[target[0]], electrodes[target[0]], phase_name)
-        PSD_visualisation(freqs_MI, freqs_rest, psd_mean_MI[target[2]], psd_mean_rest[target[2]], electrodes[target[2]], phase_name)
-        X_train = np.vstack((np.hstack((psd_MI[:, target[0], target[1]][:, None],psd_rest[:, target[0], target[1]][:, None])),
-                             np.hstack((psd_MI[:, target[2], target[3]][:, None], psd_rest[:, target[2], target[3]][:, None]))))
+        data_mean_MI = np.mean(data_MI, axis=0)
+        data_mean_rest = np.mean(data_rest, axis=0)
+        if feature_name == "PSD":
+            PSD_visualisation(freqs_MI, freqs_rest, data_mean_MI[target[0]], data_mean_rest[target[0]], electrodes[target[0]], phase_name)
+            PSD_visualisation(freqs_MI, freqs_rest, data_mean_MI[target[2]], data_mean_rest[target[2]], electrodes[target[2]], phase_name)
+        if feature_name == "NS":
+            NS_visualisation(freqs_MI, data_mean_MI[target[0]], data_mean_rest[target[0]], electrodes[target[0]], phase_name)
+            NS_visualisation(freqs_MI, data_mean_MI[target[2]], data_mean_rest[target[2]], electrodes[target[2]], phase_name)
+        X_train = np.vstack((np.hstack((data_MI[:, target[0], target[1]][:, None],data_rest[:, target[0], target[1]][:, None])),
+                             np.hstack((data_MI[:, target[2], target[3]][:, None], data_rest[:, target[2], target[3]][:, None]))))
         print(f"LDA train shape : {X_train.shape}")
-        y_train = np.hstack((np.ones((psd_MI.shape[0])), np.zeros((psd_rest.shape[0]))))
-        """np.zeros((psd_rest.shape[0]))[:, None], np.zeros((psd_rest.shape[0]))[:, None]))"""
+        y_train = np.hstack((np.ones((data_MI.shape[0])), np.zeros((data_rest.shape[0]))))
+        """np.zeros((data_rest.shape[0]))[:, None], np.zeros((data_rest.shape[0]))[:, None]))"""
         print(f"LDA train shape :{y_train.shape}")
         lda_classifier_2 = lda_classifier
         if k_fold:
@@ -212,13 +220,13 @@ def LDA_train(psd_MI, psd_rest, freqs_MI, freqs_rest, Ordered_R_squared_map, Ord
     return lda_classifier, target
 
 
-def LDA_test(psd_MI, psd_rest, previous_psd_MI, previous_psd_rest, lda_classifier, target, electrodes):
-    X_test = np.vstack((np.hstack((psd_MI[:, target[0], target[1]][:, None],psd_rest[:, target[0], target[1]][:, None])),
-                         np.hstack((psd_MI[:, target[2], target[3]][:, None], psd_rest[:, target[2], target[3]][:, None]))))
-    y_test = np.hstack((np.ones((psd_MI.shape[0])), np.zeros((psd_rest.shape[0]))))
+def LDA_test(data_MI, data_rest, previous_data_MI, previous_data_rest, lda_classifier, target, electrodes):
+    X_test = np.vstack((np.hstack((data_MI[:, target[0], target[1]][:, None],data_rest[:, target[0], target[1]][:, None])),
+                         np.hstack((data_MI[:, target[2], target[3]][:, None], data_rest[:, target[2], target[3]][:, None]))))
+    y_test = np.hstack((np.ones((data_MI.shape[0])), np.zeros((data_rest.shape[0]))))
     print(f"LDA test shape : {X_test.shape}")
     print(f"LDA test shape : {y_test.shape}")
-    features_separability(psd_MI, psd_rest, previous_psd_MI, previous_psd_rest, target, electrodes)
+    features_separability(data_MI, data_rest, previous_data_MI, previous_data_rest, target, electrodes)
     lda_predictions = lda_classifier.predict(X_test)
     acc = accuracy_score(y_test, lda_predictions)
     lda_accuracy = classification_report(y_test, lda_predictions)
@@ -243,16 +251,16 @@ def mdm_train(fc_MI, fc_rest, Ordered_R_squared_map_NS, freqs_MI,Ordered_channel
 
         Channel_of_interest = ["C1", "C3", "C5", "CP1", "CP3", "CP5", "C2", "CP2"]
         indices_Channels_of_interest = [Ordered_channel_name_NS.index(i) for i in Channel_of_interest]
-        fc_MI = fc_MI[:, indices_Channels_of_interest, :, :]
+        """fc_MI = fc_MI[:, indices_Channels_of_interest, :, :]
         fc_rest = fc_rest[:, indices_Channels_of_interest, :, :]
         fc_MI = fc_MI[:, :, indices_Channels_of_interest, :]
-        fc_rest = fc_rest[:, :, indices_Channels_of_interest, :]
-        FC_visualisation(fc_MI, fc_rest, target, Channel_of_interest,phase_name)
+        fc_rest = fc_rest[:, :, indices_Channels_of_interest, :]"""
+        FC_visualisation(fc_MI, fc_rest, target, electrodes,phase_name)
 
         for i in range(fc_MI.shape[0]):
             fc_MI[i, :, :, target] = SPD(fc_MI[i, :, :, target])
             fc_rest[i, :, :, target] = SPD(fc_rest[i, :, :, target])
-        FC_visualisation(fc_MI, fc_rest, target, Channel_of_interest, phase_name)
+        FC_visualisation(fc_MI, fc_rest, target, electrodes, phase_name)
 
         X_train = np.vstack((fc_MI[:, :, :, target], fc_rest[:, :, :, target]))
         y_train = np.hstack((np.ones((fc_MI.shape[0])), np.zeros((fc_rest.shape[0]))))
@@ -271,10 +279,10 @@ def mdm_train(fc_MI, fc_rest, Ordered_R_squared_map_NS, freqs_MI,Ordered_channel
 def mdm_test(fc_MI, fc_rest, mdm, target, Ordered_channel_name_NS):
     Channel_of_interest = ["C1", "C3", "C5", "CP1", "CP3", "CP5", "C2", "CP2"]
     indices_Channels_of_interest = [Ordered_channel_name_NS.index(i) for i in Channel_of_interest]
-    fc_MI = fc_MI[:, indices_Channels_of_interest, :, :]
+    """fc_MI = fc_MI[:, indices_Channels_of_interest, :, :]
     fc_rest = fc_rest[:, indices_Channels_of_interest, :, :]
     fc_MI = fc_MI[:, :, indices_Channels_of_interest, :]
-    fc_rest = fc_rest[:, :, indices_Channels_of_interest, :]
+    fc_rest = fc_rest[:, :, indices_Channels_of_interest, :]"""
     X_test = np.vstack((fc_MI[:, :, :, target], fc_rest[:, :, :, target]))
     y_test = np.hstack((np.ones((fc_MI.shape[0])), np.zeros((fc_rest.shape[0]))))
     for i in range(X_test.shape[0]):
@@ -282,4 +290,4 @@ def mdm_test(fc_MI, fc_rest, mdm, target, Ordered_channel_name_NS):
     print(f"MDM test shape : {X_test.shape}")
     print(f"MDM test shape : {y_test.shape}")
     pred = mdm.predict(X_test)
-    return accuracy_score(y_test, pred) #classification_report(y_test, pred)
+    return classification_report(y_test, pred), accuracy_score(y_test, pred)

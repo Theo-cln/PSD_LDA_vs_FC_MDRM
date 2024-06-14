@@ -54,6 +54,15 @@ def Compute_Rsquare_Map_Welch(Power_of_trials_1,Power_of_trials_2):
             G=((Sum_q+Sum_r)**2)/(n1+n2)
             Rsquare_tab[k,l] = (Sum_q**2/n1+Sum_r**2/n2-G)/(sumsqu1+sumsqu2-G)
 
+    diff = Power_of_trials_2-Power_of_trials_1
+    diff = np.mean(diff, axis=0)
+    for j in range(diff.shape[0]):
+        for k in range(diff.shape[1]):
+            if diff[j,k] < 0:
+                Rsquare_tab[j,k] = 0
+
+
+
     return Rsquare_tab
 
 
@@ -118,7 +127,7 @@ def imaginary_coherence(data, freq, lowLimit, highLimit):
                 sfarrA, Pxx = welch(data[i,j], fs=freq, window='hamming', nperseg=window, noverlap=overlap, scaling='density', nfft=500)
                 sfarrB, Pyy = welch(data[i,k], fs=freq, window='hamming', nperseg=window, noverlap=overlap, scaling='density', nfft=500)
                 sfarrAB, Pxy = csd(data[i,j], data[i,k], fs=freq, window='hamming', nperseg=window, noverlap=overlap, scaling='density', nfft=500)
-                Icoh = np.imag(Pxy) / np.sqrt(Pxx * Pyy)
+                Icoh = np.abs(np.imag(Pxy)) / Pxx * Pyy
                 im_coherence[i, j, k] = Icoh
                 im_coherence[i, k, j] = Icoh
             progress_bar.update(1)

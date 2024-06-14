@@ -17,19 +17,21 @@ tmax = 4  # in seconds
 lowLimit = 4
 highLimit = 40
 folder = "/Users/theo.coulon/data/sub-02/ses-01/"
-#folder = "/Users/theo.coulon/data/Braccio_Connect/Sub02/PSD+NS"
-event = ['OVTK_GDF_Left', 'OVTK_GDF_Right']
+folder_Braccio = "/Users/theo.coulon/data/Braccio_Connect/Sub02/PSD+NS"
+folder_PhysioNET = "/Users/theo.coulon/data/PhysioNET/S005"
+event_Braccio = ['OVTK_GDF_Left', 'OVTK_GDF_Right']
+event_PhysioNET = ["T0", "T2"]
 phases_names = ['Train', 'Test_1', 'Test_2']
-
 
 """data importation"""
 
 phases = edf_file_importation(folder)
+phases_PhysioNET = [["/Users/theo.coulon/data/PhysioNET/S005/S005R04.edf"], ["/Users/theo.coulon/data/PhysioNET/S005/S005R08.edf"], ["/Users/theo.coulon/data/PhysioNET/S005/S005R012.edf"]]
 phases = dict(zip(phases_names, phases))
 for phase_name, phase in phases.items():
     print('---------------------------------------------------')
     print('Current phase :', phase_name)
-    MI, rest = dataset_creator(phase, event, tmin=tmin, tmax=tmax, freq=Hz)
+    MI, rest = dataset_creator(phase, event_Braccio, tmin=tmin, tmax=tmax, freq=Hz)
     print('datasets shapes:', MI.shape, rest.shape)
 
 
@@ -93,7 +95,7 @@ for phase_name, phase in phases.items():
 
         lda_NS_classifier, target_NS = LDA_train(Ordered_NS_MI, Ordered_NS_rest, freqs_MI, freqs_rest,
                                            Ordered_R_squared_map_NS, Ordered_channel_name, electrodes, phase_name,
-                                           lowLimit, k_fold=False)
+                                           lowLimit, k_fold=False, feature_name="NS")
 
         mdm, target_mdm = mdm_train(FC_MI, FC_rest,Ordered_R_squared_map_NS, freqs_MI,
                                                     Ordered_channel_name_NS, Ordered_NS_MI, Ordered_NS_rest,
@@ -113,13 +115,13 @@ for phase_name, phase in phases.items():
         lda_predictions_NS, lda_accuracy_NS, acc_NS = LDA_test(Ordered_NS_MI, Ordered_NS_rest, previous_node_strength_MI,
                                                                previous_node_strength_rest, lda_NS_classifier, target_NS,
                                                                electrodes)
-        mdm_report = mdm_test(FC_MI, FC_rest, mdm, target_mdm, Ordered_channel_name_NS)
-        """print(f"Pipeline PSD - LDA results for phase {phase_name}: \n", lda_accuracy)
+        mdm_report, mdm_acc = mdm_test(FC_MI, FC_rest, mdm, target_mdm, Ordered_channel_name_NS)
+        print(f"Pipeline PSD - LDA results for phase {phase_name}: \n", lda_accuracy)
         print(f"Pipeline NS - LDA results for phase {phase_name}: \n", lda_accuracy_NS)
-        print(f"Pipeline FC - MDM results for phase {phase_name}: \n", mdm_report)"""
+        print(f"Pipeline FC - MDM results for phase {phase_name}: \n", mdm_report)
         print("acc PSD : ", acc)
         print("acc NS : ", acc_NS)
-        print("acc FC : ", mdm_report)
+        print("acc FC : ", mdm_acc)
 
         lda_classifier, target_PSD = LDA_train(Ordered_PSD_MI, Ordered_PSD_rest, freqs_MI, freqs_rest,
                                            Ordered_R_squared_map, Ordered_channel_name, electrodes, phase_name,
@@ -127,7 +129,7 @@ for phase_name, phase in phases.items():
 
         lda_NS_classifier, target_NS = LDA_train(Ordered_NS_MI, Ordered_NS_rest, freqs_MI, freqs_rest,
                                            Ordered_R_squared_map_NS, Ordered_channel_name, electrodes, phase_name,
-                                           lowLimit, k_fold=False)
+                                           lowLimit, k_fold=False, feature_name="NS")
 
         mdm, target_mdm = mdm_train(FC_MI, FC_rest, Ordered_R_squared_map_NS, freqs_MI,
                                     Ordered_channel_name_NS, Ordered_NS_MI, Ordered_NS_rest, node_strength_diff,
@@ -144,13 +146,12 @@ for phase_name, phase in phases.items():
         lda_predictions_NS, lda_accuracy_NS, acc_NS = LDA_test(Ordered_NS_MI, Ordered_NS_rest,
                                                                previous_node_strength_MI,
                                                                previous_node_strength_rest, lda_NS_classifier,
-                                                               target_NS,
-                                                               electrodes)
-        mdm_report = mdm_test(FC_MI, FC_rest, mdm, target_mdm, Ordered_channel_name_NS)
-        """print(f"Pipeline PSD - LDA results for phase {phase_name}: \n", lda_accuracy)
+                                                               target_NS,electrodes)
+        mdm_report, mdm_acc = mdm_test(FC_MI, FC_rest, mdm, target_mdm, Ordered_channel_name_NS)
+        print(f"Pipeline PSD - LDA results for phase {phase_name}: \n", lda_accuracy)
         print(f"Pipeline NS - LDA results for phase {phase_name}: \n", lda_accuracy_NS)
-        print(f"Pipeline FC - MDM results for phase {phase_name}: \n", mdm_report)"""
+        print(f"Pipeline FC - MDM results for phase {phase_name}: \n", mdm_report)
         print("acc PSD : ", acc)
         print("acc NS : ", acc_NS)
-        print("acc FC : ", mdm_report)
+        print("acc FC : ", mdm_acc)
 
