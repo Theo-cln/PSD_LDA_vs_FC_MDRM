@@ -105,18 +105,20 @@ def FC(data, freq, lowLimit, highLimit):
 def imaginary_coherence(data, freq, lowLimit, highLimit):
 
     """
-    Compute the imaginary coherence between two signals.
+    Compute the imaginary coherence of a signal.
 
     Args:
-    - signal1 : array representing the first signal
-    - signal2 : array representing the second signal
+    - data : array representing the signal (shape(nb_trials, nb_channels, nb_data_points))
+    - freq : frequency of the signal
+    - lowlimit : lower bound of the data taken in account (in Hz)
+    - highlimit : upper bound of the data taken in account (in Hz)
 
     Returns:
-    - imaginary_coherence
+    - imaginary_coherence (shape(nb_trials, nb_channels, nb_channels, HighLimit - LowLimit))
     """
 
-    window = int(0.5 * freq)  # 0.5 seconde
-    overlap = int(0.25 * freq)  # 0.25 seconde
+    window = int(0.5 * freq)  # 0.5 seconds
+    overlap = int(0.25 * freq)  # 0.25 seconds
     n_segment = data.shape[0]
     n_channels = data.shape[1]
     im_coherence = np.zeros((n_segment, n_channels, n_channels, 251))
