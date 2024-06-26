@@ -34,6 +34,7 @@ def FC_visualisation(FC_MI, FC_rest, frequency, channel_names, phase_name):
     plt.show()
 
 
+
 def R_squared_map_visualisation(R_squared_map, frequency, channel_name="", phase_name="", feature_name=""):
     channels = range(len(channel_name))
     frequency_length = range(len(frequency))
