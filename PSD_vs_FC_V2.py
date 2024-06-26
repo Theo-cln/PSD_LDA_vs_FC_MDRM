@@ -17,7 +17,7 @@ tmax = 4  # in seconds
 lowLimit = 4
 highLimit = 40
 folder = "/Users/theo.coulon/data/sub-02/ses-01/"
-folder_Braccio = "/Users/theo.coulon/data/Braccio_Connect/Sub02/PSD+NS"
+folder_Braccio = "/Users/theo.coulon/data/Braccio_Connect/Sub04/PSD+NS"
 folder_PhysioNET = "/Users/theo.coulon/data/PhysioNET/S005"
 event_Braccio = ['OVTK_GDF_Left', 'OVTK_GDF_Right']
 event_PhysioNET = ["T0", "T2"]
@@ -25,7 +25,7 @@ phases_names = ['Train', 'Test_1', 'Test_2']
 
 """data importation"""
 
-phases = edf_file_importation(folder)
+phases = edf_file_importation(folder_Braccio)
 phases_PhysioNET = [["/Users/theo.coulon/data/PhysioNET/S005/S005R04.edf"], ["/Users/theo.coulon/data/PhysioNET/S005/S005R08.edf"], ["/Users/theo.coulon/data/PhysioNET/S005/S005R012.edf"]]
 phases = dict(zip(phases_names, phases))
 for phase_name, phase in phases.items():
