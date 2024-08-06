@@ -1,204 +1,202 @@
 import numpy as np
 from scipy.signal import welch, coherence, csd
-from mne import viz
 from tqdm import tqdm
-from pyriemann.estimation import Coherences
 
-
-def PSD(signal, fs, lowLimit, highLimit):
-
+def PSD(signal, fs, low_limit, high_limit):
     """
-    calculate the Power Spectral Density (PSD) mean of the signal
+    Calculate the Power Spectral Density (PSD) mean of the signal.
 
-    parameters : signal : numpy array representing the signal
-                 sampling_rate : the sampling rate of the signal
+    Parameters:
+    - signal (numpy array): Input signal data, expected shape (n_trials, n_channels, n_samples).
+    - fs (float): Sampling rate of the signal.
+    - low_limit (float): Lower frequency limit for PSD analysis.
+    - high_limit (float): Upper frequency limit for PSD analysis.
+
+    Returns:
+    - f (numpy array): Frequency values corresponding to the PSD.
+    - PSD_dB (numpy array): PSD values in dB.
+    - low_freq_idx (int): Index of the low frequency limit.
+    - high_freq_idx (int): Index of the high frequency limit.
     """
-
-    window = int(0.5 * fs)  # 0.5 seconde
-    overlap = int(0.25 * fs)  # 0.25 seconde
+    window_size = int(0.5 * fs)  # Window size: 0.5 seconds
+    overlap_size = int(0.25 * fs)  # Overlap size: 0.25 seconds
     PSD_all_trials = []
+
     for trial in signal:
         PSD_trial = []
         for channel in trial:
-            f, Pxx = welch(channel, fs=fs, window='hamming', nperseg=window, noverlap=overlap, scaling='density', nfft=500, detrend='constant')
+            f, Pxx = welch(channel, fs=fs, window='hamming', nperseg=window_size, noverlap=overlap_size,
+                           scaling='density', nfft=500, detrend='constant')
             PSD_trial.append(Pxx)
         PSD_all_trials.append(PSD_trial)
+
     PSD_all_trials = np.array(PSD_all_trials)
     PSD_dB = 10 * np.log10(PSD_all_trials)
-    lowFreqLimits = np.where(f == lowLimit)[0][0]
-    highFreqLimits = np.where(f == highLimit)[0][0]
-    f = f[lowFreqLimits:highFreqLimits]
-    PSD_dB = PSD_dB[:, :, lowFreqLimits:highFreqLimits]
+
+    # Select frequency range of interest
+    low_freq_idx = np.where(f >= low_limit)[0][0]
+    high_freq_idx = np.where(f <= high_limit)[0][-1]
+    f = f[low_freq_idx:high_freq_idx + 1]
+    PSD_dB = PSD_dB[:, :, low_freq_idx:high_freq_idx + 1]
 
     return f, PSD_dB
 
-
-def Compute_Rsquare_Map_Welch(Power_of_trials_1,Power_of_trials_2):
-    b = Power_of_trials_1.shape
-    a = Power_of_trials_2.shape
-    Rsquare_tab = np.zeros([a[1],a[2]])
-    for k in range(b[1]):
-        for l in range(b[2]):
-            concat_tab_MI = []
-            concat_tab_Rest = []
-            for i in range(a[0]):
-                concat_tab_MI.append(Power_of_trials_1[i,k,l])
-                concat_tab_Rest.append(Power_of_trials_2[i,k,l])
-            #correlation_matrix = np.corrcoef(concat_tab_MI, concat_tab_Rest)
-            Sum_q = sum(concat_tab_MI)
-            Sum_r = sum(concat_tab_Rest)
-            n1 = len(concat_tab_MI)
-            n2 = len(concat_tab_Rest)
-            sumsqu1 = sum(np.multiply(concat_tab_MI,concat_tab_MI))
-            sumsqu2 = sum(np.multiply(concat_tab_Rest,concat_tab_Rest))
-            G=((Sum_q+Sum_r)**2)/(n1+n2)
-            Rsquare_tab[k,l] = (Sum_q**2/n1+Sum_r**2/n2-G)/(sumsqu1+sumsqu2-G)
-
-    diff = Power_of_trials_2-Power_of_trials_1
-    diff = np.mean(diff, axis=0)
-    for j in range(diff.shape[0]):
-        for k in range(diff.shape[1]):
-            if diff[j,k] < 0:
-                Rsquare_tab[j,k] = 0
-
-
-
-    return Rsquare_tab
-
-
-def FC(data, freq, lowLimit, highLimit):
-
+def compute_rsquare_map_welch(power_trials_1, power_trials_2, feature_name="PSD"):
     """
-    Calculate the functionnal connectivity between every signal in the dataset
+    Compute the R-square map between two sets of power spectral densities.
 
-    parameters : signal : numpy array representing the signal
-            fs : sampling rate of the signal
-            lowcut : lower bound of the data taken in account
-            highcut : upper bound of the data taken in account
+    Parameters:
+    - power_trials_1 (numpy array): PSD data for condition 1 (e.g., motor imagery).
+    - power_trials_2 (numpy array): PSD data for condition 2 (e.g., rest).
+    - feature_name (str): Name of the feature being analyzed (e.g., "PSD" or "NS").
+
+    Returns:
+    - Rsquare_map (numpy array): The R-square values indicating the strength of the difference between conditions.
     """
+    n_channels, n_freqs = power_trials_1.shape[1], power_trials_1.shape[2]
+    Rsquare_map = np.zeros((n_channels, n_freqs))
 
-    n_segment = data.shape[0]
-    n_channels = data.shape[1]
-    # Initialiser la matrice de cohérence
-    coherence_matrix = np.zeros((n_segment, n_channels, n_channels, 251))
-    # Calculer la cohérence entre les paires de canaux
-    for i in range(n_segment):
-        progress_bar = tqdm(total=n_channels, desc=f'Processing trial n°{i} : ', unit='%')
-        for j in range(n_channels):
-            for k in range(j+1, n_channels):
-                frequencies, coherence_values = coherence(data[i, j], data[i, k], fs=freq, nfft=500)
-                coherence_matrix[i, j, k] = coherence_values
-                coherence_matrix[i, k, j] = coherence_values
+    for ch in range(n_channels):
+        for freq in range(n_freqs):
+            sum_q = np.sum(power_trials_1[:, ch, freq])
+            sum_r = np.sum(power_trials_2[:, ch, freq])
+            n1, n2 = len(power_trials_1[:, ch, freq]), len(power_trials_2[:, ch, freq])
+            sumsq1 = np.sum(np.square(power_trials_1[:, ch, freq]))
+            sumsq2 = np.sum(np.square(power_trials_2[:, ch, freq]))
+            G = ((sum_q + sum_r) ** 2) / (n1 + n2)
+            Rsquare_map[ch, freq] = (sum_q ** 2 / n1 + sum_r ** 2 / n2 - G) / (sumsq1 + sumsq2 - G)
+
+    diff = np.mean(power_trials_2 - power_trials_1, axis=0)
+    if feature_name == "PSD":
+        Rsquare_map[diff < 0] = 0
+    elif feature_name == "NS":
+        Rsquare_map[diff > 0] = 0
+
+    return Rsquare_map
+
+def FC(data, freq, low_limit, high_limit):
+    """
+    Calculate the functional connectivity between every signal in the dataset using coherence.
+
+    Parameters:
+    - data (numpy array): Input signal data, expected shape (n_trials, n_channels, n_samples).
+    - freq (float): Sampling rate of the signal.
+    - low_limit (float): Lower frequency limit for coherence analysis.
+    - high_limit (float): Upper frequency limit for coherence analysis.
+
+    Returns:
+    - coherence_matrix (numpy array): Coherence matrix for each pair of channels and frequencies.
+    """
+    n_trials, n_channels = data.shape[0], data.shape[1]
+    coherence_matrix = np.zeros((n_trials, n_channels, n_channels, 251))
+
+    for trial_idx in range(n_trials):
+        progress_bar = tqdm(total=n_channels, desc=f'Processing trial {trial_idx+1}/{n_trials}', unit='%')
+        for ch1 in range(n_channels):
+            for ch2 in range(ch1 + 1, n_channels):
+                freqs, coh_values = coherence(data[trial_idx, ch1], data[trial_idx, ch2], fs=freq, nfft=500)
+                coherence_matrix[trial_idx, ch1, ch2] = coh_values
+                coherence_matrix[trial_idx, ch2, ch1] = coh_values
             progress_bar.update(1)
             progress_bar.set_postfix({"progress": f"{progress_bar.n/progress_bar.total:.0%}"})
         progress_bar.close()
-    lowFreqLimits = np.where(frequencies == lowLimit)[0][0]
-    highFreqLimits = np.where(frequencies == highLimit)[0][0]
-    coherence_matrix = coherence_matrix[:, :, :, lowFreqLimits:highFreqLimits]
+
+    low_freq_idx = np.where(freqs >= low_limit)[0][0]
+    high_freq_idx = np.where(freqs <= high_limit)[0][-1]
+    coherence_matrix = coherence_matrix[:, :, :, low_freq_idx:high_freq_idx + 1]
 
     return coherence_matrix
 
-
-
-
-
-def imaginary_coherence(data, freq, lowLimit, highLimit):
-
+def imaginary_coherence(data, freq, low_limit, high_limit):
     """
     Compute the imaginary coherence of a signal.
 
-    Args:
-    - data : array representing the signal (shape(nb_trials, nb_channels, nb_data_points))
-    - freq : frequency of the signal
-    - lowlimit : lower bound of the data taken in account (in Hz)
-    - highlimit : upper bound of the data taken in account (in Hz)
+    Parameters:
+    - data (numpy array): Input signal data, expected shape (n_trials, n_channels, n_samples).
+    - freq (float): Sampling rate of the signal.
+    - low_limit (float): Lower frequency limit for coherence analysis.
+    - high_limit (float): Upper frequency limit for coherence analysis.
 
     Returns:
-    - imaginary_coherence (shape(nb_trials, nb_channels, nb_channels, HighLimit - LowLimit))
+    - im_coherence (numpy array): Imaginary coherence matrix for each pair of channels and frequencies.
     """
+    window_size = int(0.5 * freq)  # 0.5 seconds
+    overlap_size = int(0.25 * freq)  # 0.25 seconds
+    n_trials, n_channels = data.shape[0], data.shape[1]
+    im_coherence = np.zeros((n_trials, n_channels, n_channels, 251))
 
-    window = int(0.5 * freq)  # 0.5 seconds
-    overlap = int(0.25 * freq)  # 0.25 seconds
-    n_segment = data.shape[0]
-    n_channels = data.shape[1]
-    im_coherence = np.zeros((n_segment, n_channels, n_channels, 251))
-    for i in range(n_segment):
-        progress_bar = tqdm(total=n_channels, desc=f'Processing trial n°{i} : ', unit='%')
-        for j in range(n_channels):
-            for k in range(j+1, n_channels):
-                sfarrA, Pxx = welch(data[i,j], fs=freq, window='hamming', nperseg=window, noverlap=overlap, scaling='density', nfft=500)
-                sfarrB, Pyy = welch(data[i,k], fs=freq, window='hamming', nperseg=window, noverlap=overlap, scaling='density', nfft=500)
-                sfarrAB, Pxy = csd(data[i,j], data[i,k], fs=freq, window='hamming', nperseg=window, noverlap=overlap, scaling='density', nfft=500)
-                Icoh = np.abs(np.imag(Pxy)) / Pxx * Pyy
-                im_coherence[i, j, k] = Icoh
-                im_coherence[i, k, j] = Icoh
+    for trial_idx in range(n_trials):
+        progress_bar = tqdm(total=n_channels, desc=f'Processing trial {trial_idx+1}/{n_trials}', unit='%')
+        for ch1 in range(n_channels):
+            for ch2 in range(ch1 + 1, n_channels):
+                _, Pxx = welch(data[trial_idx, ch1], fs=freq, window='hamming', nperseg=window_size, noverlap=overlap_size,
+                               scaling='density', nfft=500)
+                _, Pyy = welch(data[trial_idx, ch2], fs=freq, window='hamming', nperseg=window_size, noverlap=overlap_size,
+                               scaling='density', nfft=500)
+                _, Pxy = csd(data[trial_idx, ch1], data[trial_idx, ch2], fs=freq, window='hamming', nperseg=window_size,
+                             noverlap=overlap_size, scaling='density', nfft=500)
+                Icoh = np.abs(np.imag(Pxy)) / (Pxx * Pyy)
+                im_coherence[trial_idx, ch1, ch2] = Icoh
+                im_coherence[trial_idx, ch2, ch1] = Icoh
             progress_bar.update(1)
             progress_bar.set_postfix({"progress": f"{progress_bar.n/progress_bar.total:.0%}"})
         progress_bar.close()
-    lowFreqLimits = np.where(sfarrAB == lowLimit)[0][0]
-    highFreqLimits = np.where(sfarrAB == highLimit)[0][0]
-    im_coherence = im_coherence[:, :, :, lowFreqLimits:highFreqLimits]
+
+    low_freq_idx = np.where(freqs >= low_limit)[0][0]
+    high_freq_idx = np.where(freqs <= high_limit)[0][-1]
+    im_coherence = im_coherence[:, :, :, low_freq_idx:high_freq_idx + 1]
 
     return im_coherence
 
-
 def node_strength(coherence_matrix):
-
     """
-    Calculate the node_strength of the coherence matrix by summing up the column and line corresponding to each electrode
-    summing on all the frequencies
+    Calculate the node strength of the coherence matrix by summing the coherence values across all channels.
 
-    parameter : coherence_matrix, the coherence matrix to calculate the node strength
+    Parameters:
+    - coherence_matrix (numpy array): The coherence matrix, expected shape (n_trials, n_channels, n_channels, n_freqs).
+
+    Returns:
+    - node_strengths (numpy array): Node strength values for each channel and frequency.
     """
+    n_trials, n_channels, _, n_freqs = coherence_matrix.shape
+    node_strengths = np.zeros((n_trials, n_channels, n_freqs))
 
-    num_trial = coherence_matrix.shape[0]
-    num_channels = coherence_matrix.shape[1]
-    num_freqs = coherence_matrix.shape[-1]
-    node_strengths = np.zeros((num_trial, num_channels, num_freqs))  # Initialisation des node strengths à zéro
-    # Calcul de la somme des cohérences absolues pour chaque canal à chaque fréquence
-    for trial in range(num_trial):
-        for channel in range(num_channels):
-            for freq in range(num_freqs):
-                node_strengths[trial, channel, freq] += np.sum(coherence_matrix[trial, channel, :, freq])
-                node_strengths[trial, channel, freq] += np.sum(coherence_matrix[trial, :, channel, freq])
+    for trial in range(n_trials):
+        for channel in range(n_channels):
+            node_strengths[trial, channel] = np.sum(coherence_matrix[trial, channel], axis=0)
+            node_strengths[trial, channel] += np.sum(coherence_matrix[trial, :, channel], axis=0)
 
     return node_strengths
 
+def NSdiff(node_strength_MI, node_strength_rest):
+    """
+    Calculate the difference in node strength between motor imagery and rest conditions.
 
-def NSdiff (node_strength_MI, node_strength_rest):
-    node_strength_diff = np.zeros((node_strength_MI.shape[1], node_strength_MI.shape[2]))
-    for freq in range (node_strength_MI.shape[2]):
-        for channel in range(node_strength_MI.shape[1]):
+    Parameters:
+    - node_strength_MI (numpy array): Node strength values for motor imagery.
+    - node_strength_rest (numpy array): Node strength values for rest.
+
+    Returns:
+    - node_strength_diff (numpy array): Difference in node strength between the two conditions.
+    """
+    n_channels, n_freqs = node_strength_MI.shape[1], node_strength_MI.shape[2]
+    node_strength_diff = np.zeros((n_channels, n_freqs))
+
+    for freq in range(n_freqs):
+        for channel in range(n_channels):
             diff = node_strength_MI[:, channel, freq] - node_strength_rest[:, channel, freq]
             node_strength_diff[channel, freq] = np.mean(diff)
-    print(node_strength_rest[:, 13, 8], "\n --- \n", node_strength_MI[:, 13, 8],  "\n --- \n", node_strength_MI.shape[2])
 
     return node_strength_diff
 
 
-def FC_Fucon(data, freq, lowLimit, highLimit):
 
-    n_segment = data.shape[0]
-    n_channels = data.shape[1]
+"""
+regarder si dB bon ou pas 
+faire quelque chose pour coh et Icoh pour les R-squared
+NS : enelver axis=0
 
-    window = int(0.5 * freq)  # 0.5 seconde
-    overlap = 0.25  # 0.25 seconde
 
-    # Calculer la transformée de Fourier pour chaque canal
-    fft_data = np.fft.fft(data, axis=2)
-
-    # Initialiser la matrice de cohérence
-    coherence_matrix = np.ones((n_segment, n_channels, n_channels, 251))
-    coh = Coherences(window, overlap, lowLimit, highLimit,freq)
-    # Calculer la cohérence entre les paires de canaux
-    for i in range(n_segment):
-        progress_bar = tqdm(total=n_channels, desc=f'Processing trial n°{i} : ', unit='%')
-        r = coh.fit_transform(data[i])
-        print(r.shape)
-
-        progress_bar.update(1)
-        progress_bar.set_postfix({"progress": f"{progress_bar.n / progress_bar.total:.0%}"})
-        progress_bar.close()
-
-    return r
-
+    lowFreqLimits = np.where(sfarrAB == lowLimit)[0][0]
+    highFreqLimits = np.where(sfarrAB == highLimit)[0][0]
+"""
