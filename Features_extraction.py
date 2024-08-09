@@ -43,7 +43,7 @@ def PSD(signal, fs, low_limit, high_limit):
 
 def compute_rsquare_map_welch(power_trials_1, power_trials_2, feature_name="PSD"):
     """
-    Compute the R-square map between two sets of power spectral densities.
+    Compute the signed R-square map between two sets of power spectral densities.
 
     Parameters:
     - power_trials_1 (numpy array): PSD data for condition 1 (e.g., motor imagery).
@@ -142,8 +142,8 @@ def imaginary_coherence(data, freq, low_limit, high_limit):
             progress_bar.set_postfix({"progress": f"{progress_bar.n/progress_bar.total:.0%}"})
         progress_bar.close()
 
-    low_freq_idx = np.where(freqs >= low_limit)[0][0]
-    high_freq_idx = np.where(freqs <= high_limit)[0][-1]
+    low_freq_idx = np.where(freq >= low_limit)[0][0]
+    high_freq_idx = np.where(freq <= high_limit)[0][-1]
     im_coherence = im_coherence[:, :, :, low_freq_idx:high_freq_idx + 1]
 
     return im_coherence

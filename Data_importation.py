@@ -17,30 +17,33 @@ def edf_file_importation(folder):
     # Initialize lists to store file paths
     train_files = []
     test_files_1 = []
-    test_files_2 = []
 
     # Determine the prefix used for training files based on the folder structure
-    if "Braccio_Connect" in folder.split("/"):
-        train_prefix = "mi"
-    else:
-        train_prefix = "train"
+    train_prefix = "mi" if "Braccio_Connect" in folder.split(os.sep) else "train"
 
     # Iterate over all files in the specified folder
-    for file in os.listdir(folder):
-        if file.endswith('.edf'):
-            first_word = file.split('-')[0].lower()  # Extract and normalize the first word of the filename
-            file_path = os.path.join(folder, file)
+    for filename in os.listdir(folder):
+        if filename.endswith('.edf'):
+            # Extract the first word of the file name to determine its category
+            first_word = filename.split('-')[0].lower()
 
+            # Categorize files into training or test based on the first word
             if first_word == train_prefix:
-                train_files.append(file_path)
+                train_files.append(os.path.join(folder, filename))
             elif first_word == 'test':
-                test_files_1.append(file_path)
+                test_files_1.append(os.path.join(folder, filename))
 
     # Sort test files to ensure consistent ordering
     test_files_1 = sorted(test_files_1)
 
-    """Distribute test files between test set 1 and test set 2 based on the number of test files that can be different 
-    for Braccio connect dataset"""
+    """
+    Distribute test files between test set 1 and test set 2 based on the number of test files that can be different 
+    for Braccio connect dataset
+    """
+
+    if len(test_files_1) == 3:
+        return [train_files, test_files_1]
+
     try:
         if len(test_files_1) == 5:
             test_files_2 = test_files_1[-2:]
@@ -49,7 +52,7 @@ def edf_file_importation(folder):
             test_files_2 = test_files_1[-4:]
             test_files_1 = test_files_1[:-4]
         else:
-            raise ValueError("Unexpected number of test files found. Expected 5 or 10 test files.")
+            raise ValueError(f"Unexpected number of test files found. Expected 5 or 10 test files, got {len(test_files_1)}")
     except Exception as e:
         print("Error in distributing test files:", e)
         raise
@@ -86,6 +89,8 @@ def dataset_creator(files, event_labels, tmin=1, tmax=4, sampling_freq=500):
         # Extract events from annotations
         events, event_id = mne.events_from_annotations(raw_data)
 
+        print(event_id)
+
         # Find indices of events of interest
         event_indices = [event_id[label] for label in event_labels]
         event_positions = [i for i in range(events.shape[0]) if events[i, 2] in event_indices]
@@ -109,4 +114,15 @@ def dataset_creator(files, event_labels, tmin=1, tmax=4, sampling_freq=500):
             elif interest_labels[i] == event_indices[1]:  # Rest event
                 rest_data.append(data[:, start_idx:end_idx])
 
-    return np.array(mi_data), np.array(rest_data)
+    mi_data = np.array(mi_data)
+    rest_data = np.array(rest_data)
+
+    if mi_data.shape[0] < rest_data.shape[0]:
+        diff = mi_data.shape[0] - rest_data.shape[0]
+        rest_data = rest_data[:diff]
+
+    elif rest_data.shape[0] < mi_data.shape[0]:
+        diff = rest_data.shape[0] - mi_data.shape[0]
+        mi_data = mi_data[:diff]
+
+    return mi_data, rest_data

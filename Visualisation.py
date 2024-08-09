@@ -49,14 +49,14 @@ def FC_visualisation(FC_MI, FC_rest, frequency, channel_names, phase_name):
     fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(10, 6))
 
     im_MI = axes[0].imshow(FC_mean_MI[:, :, frequency], cmap='bwr')
-    axes[0].set_title(f'Functional Connectivity MI {phase_name} {frequency} Hz')
+    axes[0].set_title(f'Functional Connectivity MI {phase_name} {frequency+4} Hz')
     axes[0].set_xticks(channels)
     axes[0].set_xticklabels(channel_names, rotation=90, fontsize=5)
     axes[0].set_yticks(channels)
     axes[0].set_yticklabels(channel_names, fontsize=5)
 
     im_rest = axes[1].imshow(FC_mean_rest[:, :, frequency], cmap='bwr')
-    axes[1].set_title(f'Functional Connectivity Rest {phase_name} {frequency} Hz')
+    axes[1].set_title(f'Functional Connectivity Rest {phase_name} {frequency+4} Hz')
     axes[1].set_xticks(channels)
     axes[1].set_xticklabels(channel_names, rotation=90, fontsize=5)
     axes[1].set_yticks(channels)

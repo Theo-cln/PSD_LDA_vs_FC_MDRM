@@ -17,7 +17,7 @@ HIGH_CUTOFF_FREQ = 40  # Hz
 
 # File paths
 BRACCIO_DATA_PATH = "/Users/theo.coulon/data/sub-02/ses-03/"
-BRACCIO_CONNECT_DATA_PATH = "/Users/theo.coulon/data/Braccio_Connect/Sub06/PSD"
+BRACCIO_CONNECT_DATA_PATH = "/Users/theo.coulon/data/Braccio_Connect/Sub10/PSD"
 EVENT_LABELS = ['OVTK_GDF_Left', 'OVTK_GDF_Right']
 PHASE_NAMES = ['Train', 'Test_1', 'Test_2']
 
@@ -48,6 +48,7 @@ for phase_name, phase_data in phases_data.items():
     R_squared_map = compute_rsquare_map_welch(psd_MI, psd_rest)
     print(f'PSD Shape for {phase_name}: MI: {psd_MI.shape}, Rest: {psd_rest.shape}, R-squared: {R_squared_map.shape}')
 
+    """
     # Functional Connectivity (FC) Extraction
     FC_MI = FC(filtered_MI_data, SAMPLING_FREQ, LOW_CUTOFF_FREQ, HIGH_CUTOFF_FREQ)
     FC_rest = FC(filtered_rest_data, SAMPLING_FREQ, LOW_CUTOFF_FREQ, HIGH_CUTOFF_FREQ)
@@ -58,7 +59,7 @@ for phase_name, phase_data in phases_data.items():
     node_strength_rest = node_strength(FC_rest)
     R_squared_map_NS = compute_rsquare_map_welch(node_strength_MI, node_strength_rest, feature_name="NS")
     node_strength_diff = NSdiff(node_strength_MI, node_strength_rest)
-
+    """
     # Prepare for Classification
     raw_data = mne.io.read_raw_edf(phase_data[0], preload=False)
     channel_names = raw_data.info['ch_names']
@@ -66,13 +67,14 @@ for phase_name, phase_data in phases_data.items():
     # Reorder features based on R-squared map
     Ordered_PSD_MI = np.array([reorder_r_squared(psd_MI[i], channel_names)[0] for i in range(psd_MI.shape[0])])
     Ordered_PSD_rest = np.array([reorder_r_squared(psd_rest[i], channel_names)[0] for i in range(psd_rest.shape[0])])
+    """
     Ordered_NS_MI = np.array([reorder_r_squared(node_strength_MI[i], channel_names)[0] for i in
                        range(node_strength_MI.shape[0])])
     Ordered_NS_rest = np.array([reorder_r_squared(node_strength_rest[i], channel_names)[0] for i in
                        range(node_strength_rest.shape[0])])
-
+    """
     Ordered_R_squared_map, Ordered_channel_names = reorder_r_squared(R_squared_map, channel_names)
-    Ordered_R_squared_map_NS, Ordered_channel_names_NS = reorder_r_squared(R_squared_map_NS, channel_names)
+    #Ordered_R_squared_map_NS, Ordered_channel_names_NS = reorder_r_squared(R_squared_map_NS, channel_names)
 
     # List of electrode names
     electrodes = [
@@ -92,54 +94,54 @@ for phase_name, phase_data in phases_data.items():
         lda_classifier, target_PSD = train_lda(Ordered_PSD_MI, Ordered_PSD_rest, freqs_MI, freqs_rest,
                                                Ordered_R_squared_map, Ordered_channel_names, electrodes, phase_name,
                                                LOW_CUTOFF_FREQ, use_k_fold=False)
-        lda_NS_classifier, target_NS = train_lda(Ordered_NS_MI, Ordered_NS_rest, freqs_MI, freqs_rest,
+        """lda_NS_classifier, target_NS = train_lda(Ordered_NS_MI, Ordered_NS_rest, freqs_MI, freqs_rest,
                                                  Ordered_R_squared_map_NS, Ordered_channel_names_NS, electrodes,
                                                  phase_name, LOW_CUTOFF_FREQ, use_k_fold=False, feature_name="NS")
         mdrm_classifier, target_mdrm = train_mdrm(FC_MI, FC_rest, Ordered_R_squared_map_NS, freqs_MI,
                                                Ordered_channel_names_NS, node_strength_diff, electrodes, SAMPLING_FREQ,
-                                               phase_name,LOW_CUTOFF_FREQ, use_k_fold=False)
+                                               phase_name,LOW_CUTOFF_FREQ, use_k_fold=False)"""
 
 
         # Save the previous phase data for subsequent testing
         previous_psd_MI = Ordered_PSD_MI
         previous_psd_rest = Ordered_PSD_rest
-        previous_node_strength_MI = Ordered_NS_MI
-        previous_node_strength_rest = Ordered_NS_rest
+        """previous_node_strength_MI = Ordered_NS_MI
+        previous_node_strength_rest = Ordered_NS_rest"""
 
     elif phase_name in ['Test_1', 'Test_2']:
         # Test the classifiers on testing data
         lda_predictions, lda_report, lda_acc = test_lda(Ordered_PSD_MI, Ordered_PSD_rest, previous_psd_MI,
                                                           previous_psd_rest, lda_classifier, target_PSD, electrodes)
-        lda_predictions_NS, lda_NS_report, lda_acc_NS = test_lda(Ordered_NS_MI, Ordered_NS_rest,
+        """lda_predictions_NS, lda_NS_report, lda_acc_NS = test_lda(Ordered_NS_MI, Ordered_NS_rest,
                                                                    previous_node_strength_MI,
                                                                    previous_node_strength_rest, lda_NS_classifier,
                                                                    target_NS, electrodes)
-        mdrm_report, mdrm_acc = test_mdrm(FC_MI, FC_rest, mdrm_classifier, target_mdrm, Ordered_channel_names_NS)
+        mdrm_report, mdrm_acc = test_mdrm(FC_MI, FC_rest, mdrm_classifier, target_mdrm, Ordered_channel_names_NS)"""
 
         print(f"Phase {phase_name} results:")
         print(f" - LDA (PSD) accuracy: {lda_predictions}")
-        print(f" - LDA (NS) accuracy: {lda_predictions_NS}")
-        print(f" - MDRM accuracy: {mdrm_report}")
+        """print(f" - LDA (NS) accuracy: {lda_predictions_NS}")
+        print(f" - MDRM accuracy: {mdrm_report}")"""
         print(f" - LDA (PSD) report : \n {lda_acc}")
-        print(f" - LDA (NS) accuracy: \n {lda_acc_NS}")
-        print(f" - MDRM accuracy: \n {mdrm_acc}")
+        """print(f" - LDA (NS) accuracy: \n {lda_acc_NS}")
+        print(f" - MDRM accuracy: \n {mdrm_acc}")"""
 
         if phase_name == 'Test_1':
             # Re-train the classifiers with current test data
             lda_classifier, target_PSD = train_lda(Ordered_PSD_MI, Ordered_PSD_rest, freqs_MI, freqs_rest,
                                                    Ordered_R_squared_map, Ordered_channel_names, electrodes, phase_name,
                                                    LOW_CUTOFF_FREQ, lda_classifier, use_k_fold=False)
-            lda_NS_classifier, target_NS = train_lda(Ordered_NS_MI, Ordered_NS_rest, freqs_MI, freqs_rest,
+            """lda_NS_classifier, target_NS = train_lda(Ordered_NS_MI, Ordered_NS_rest, freqs_MI, freqs_rest,
                                                      Ordered_R_squared_map_NS, Ordered_channel_names_NS, electrodes,
                                                      phase_name, LOW_CUTOFF_FREQ, lda_NS_classifier, use_k_fold=False,
                                                      feature_name="NS")
             mdrm_classifier, target_mdrm = train_mdrm(FC_MI, FC_rest, Ordered_R_squared_map_NS, freqs_MI,
                                                    Ordered_channel_names_NS, node_strength_diff, electrodes,
                                                    SAMPLING_FREQ, phase_name, LOW_CUTOFF_FREQ, mdrm_classifier,
-                                                   use_k_fold=False)
+                                                   use_k_fold=False)"""
 
             # Update previous phase data for the next test
             previous_psd_MI = Ordered_PSD_MI
             previous_psd_rest = Ordered_PSD_rest
-            previous_node_strength_MI = Ordered_NS_MI
-            previous_node_strength_rest = Ordered_NS_rest
+            """previous_node_strength_MI = Ordered_NS_MI
+            previous_node_strength_rest = Ordered_NS_rest"""

@@ -209,7 +209,7 @@ def _plot_topomap_test(data, pos, vmin=None, vmax=None, cmap=None, sensors=True,
     #cbar.set_label('Rho Spearman at p<0.05', rotation=270,labelpad = 15)
     #ax.set_title(freq +'(Hz)',fontsize = 'large')
     # ax.set_title(freq,fontsize = 'large')
-    ax.set_title(f'Topomap {phase_name} {frequency_name} Hz')
+    ax.set_title(f'Topomap {phase_name} {frequency_name+4} Hz')
     # gh-1432 had a workaround for no contours here, but we'll remove it
     # because mpl has probably fixed it
     linewidth = mask_params['markeredgewidth']
